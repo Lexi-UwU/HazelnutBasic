@@ -95,6 +95,8 @@ def assembleHazelnutFile(script):
 
             compiledFile.extend(instructions[command.command])
 
+            #print(command.params)
+
             compiledFile.extend([0x00]*4) #TODO: ADDR1
             compiledFile.extend([0x00]*4) #TODO: ADDR2
             compiledFile.extend([0x00]*2) #TODO: debug data
@@ -106,7 +108,7 @@ def assembleHazelnutFile(script):
 
 
 
-def compileHazelnutBasic(t, target = "output.hazlenut"):
+def compileHazelnutBasic(t, target = "output.hazlenut", header = {}):
     script = parseHazelnutBasic(t)
     script.printScript()
     compiledFile = assembleHazelnutFile(script)
@@ -115,6 +117,7 @@ def compileHazelnutBasic(t, target = "output.hazlenut"):
 
 
 if __name__ == "__main__":
+    headerParams = {"CompilerType":"Basic", "CompilerVersion":""}
     with open("test.hzlbsk") as f:
-        compileHazelnutBasic(f.read())
+        compileHazelnutBasic(f.read(), header = headerParams)
 
