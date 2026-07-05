@@ -1,5 +1,7 @@
 
 
+import time
+
 #HazelnuteNutBasic.py
 
 #
@@ -69,6 +71,36 @@ def parseHazelnutBasic(t):
         script.script.append(command)
     return script
 
+
+def createHeader(headerData):
+    headerParams = {"headerSize":[0x6C,0x65, 0x6E, 0x67,0x74, 0x68, 0x00, 0x00],"compilerMinor":[0x6D,0x69, 0x6E, 0x6F,0x72, 0x76, 0x65, 0x72],"compilerMajor":[0x6D,0x61, 0x6A, 0x6F,0x72, 0x76, 0x65, 0x72], "compileTime":[0x75, 0x6E, 0x69, 0x78, 0x74, 0x69, 0x6D, 0x65]}
+
+
+    # This doesnt include the header length param itself, because it is a seperate thing
+    # (But it is actually part of the same thing)
+    if "headerSize" not in headerData:
+        headerData["headerSize"] = list(len(headerData).to_bytes(8, byteorder='big'))
+    header = []
+
+
+    # This sucks, but this is fine.... I think
+
+    if "headerSize" in headerParams:
+        data = headerData["headerSize"]
+        header.extend(headerParams["headerSize"])
+        #print("PREFIX",prefix, data)
+        header.extend(data)
+
+    for prefix in headerData:
+        if prefix == "headerSize":
+            continue #Header size is already handled above to ensure it is the first param
+        if prefix in headerParams:
+            data = headerData[prefix]
+            header.extend(headerParams[prefix])
+            print("PREFIX",prefix, data)
+            header.extend(data)
+    return header
+
 def assembleHazelnutFile(script):
 
     signature = [
@@ -84,6 +116,20 @@ def assembleHazelnutFile(script):
 
     compiledFile.extend(signature)
     compiledFile.extend([0x00]*8)
+
+
+    timestamp = int(time.time())
+
+
+    # Yes, I made it 4 bytes so it would fail in 2038 >:3
+    timestamp_bytes = list(timestamp.to_bytes(4, byteorder='big'))
+    instruction_count = len(script.script)
+    # Might as well put the instruction count here lol
+    count_bytes = list(instruction_count.to_bytes(4, byteorder='big'))
+
+
+
+    compiledFile.extend(createHeader( {"compilerMajor": [0x00] * 7 + [0x00], "compilerMinor": [0x00] * 7 + [0x01], "compileTime":timestamp_bytes+count_bytes}))
 
     currentAddress = 0
 
@@ -102,8 +148,9 @@ def assembleHazelnutFile(script):
             compiledFile.extend([0x00]*2) #TODO: debug data
         currentAddress += 1
 
-    print((compiledFile))
+    print(" ".join(f"{b:02X}" for b in compiledFile))
     return bytes(compiledFile)
+
 
 
 
