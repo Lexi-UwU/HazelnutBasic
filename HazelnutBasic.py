@@ -12,10 +12,26 @@ import time
 class HazelnutBasicScript:
     def __init__(self):
         self.script = []
+        self.variables = {}
+        self.lockedAddresses = []
     def printScript(self):
         for command in self.script:
             print(f"{command.command}: {command.params}")
+    def newVariable(self, name):
+        currrentLocation = 1
+        found = False
+        while not found:
+            found = True
+            for item in self.variables:
+                if self.variables[item] == currrentLocation:
+                    found = False
+            if not found:
+                currrentLocation = currrentLocation + 1
 
+
+        self.lockedAddresses.append(currrentLocation)
+        self.variables[name] = currrentLocation
+        return currrentLocation
 
 
 class HazelnutBasicCommand:
@@ -30,7 +46,7 @@ class HazelnutBasicCommand:
             insideString = False
             tempString = ""
             for item in " ".join(splitLine):
-                #print(item)
+
 
                 if item == '"':
                     insideString = not insideString
@@ -56,6 +72,7 @@ class HazelnutBasicCommand:
 
 
 
+
 # inputs:
 # t: string containing HazelnutBasicFileContents
 
@@ -68,7 +85,14 @@ def parseHazelnutBasic(t):
 
         command = HazelnutBasicCommand()
         command.parseLine(line)
+
+
+        if command.command in ["var"]:
+            script.newVariable(command.params[0])
+
+        print("Params",command.params)
         script.script.append(command)
+    print(script.variables)
     return script
 
 
@@ -134,6 +158,9 @@ def assembleHazelnutFile(script):
     currentAddress = 0
 
     for command in script.script:
+        #TODO: Add jump command so that it can jump over data sections
+        while currentAddress in script.lockedAddresses:
+            currentAddress += 1
         print(command.command)
         if command.command in instructions:
             addr_bytes = list(currentAddress.to_bytes(4, byteorder='big'))
@@ -143,8 +170,27 @@ def assembleHazelnutFile(script):
 
             #print(command.params)
 
-            compiledFile.extend([0x00]*4) #TODO: ADDR1
-            compiledFile.extend([0x00]*4) #TODO: ADDR2
+            #address 1
+            if command.command in ["var", "echo", "set$"]:
+                compiledFile.extend(list(script.variables[command.params[0]].to_bytes(4, byteorder='big')))
+
+            else:
+
+                compiledFile.extend([0x00]*4)
+
+            #address 2
+
+            if command.command in ["set$"]:
+
+                string_bytes = command.params[1].encode('utf-8')
+
+                # Pad or truncate to exactly 4 bytes
+                string_bytes = string_bytes[:4].ljust(4, b'\x00')
+
+                compiledFile.extend(list(string_bytes))
+            else:
+                compiledFile.extend([0x00]*4)
+
             compiledFile.extend([0x00]*2) #TODO: debug data
         currentAddress += 1
 

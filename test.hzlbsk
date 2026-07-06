@@ -4,5 +4,8 @@
 
 
 var test
+
+
+
 set$ test "hello world"
 echo test
